@@ -1,0 +1,120 @@
+package store
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Store struct {
+	db *gorm.DB
+}
+
+func NewStore(db *gorm.DB) *Store {
+	return &Store{db: db}
+}
+
+func (s *Store) DB() *gorm.DB {
+	return s.db
+}
+
+// Agent operations
+
+func (s *Store) CreateAgent(agent *Agent) error {
+	return s.db.Create(agent).Error
+}
+
+func (s *Store) GetAgent(agentID string) (*Agent, error) {
+	var agent Agent
+	err := s.db.Where("agent_id = ?", agentID).First(&agent).Error
+	if err != nil {
+		return nil, err
+	}
+	return &agent, nil
+}
+
+func (s *Store) UpdateAgentLastSeen(agentID string, t time.Time) error {
+	return s.db.Model(&Agent{}).Where("agent_id = ?", agentID).Update("last_seen_at", t).Error
+}
+
+func (s *Store) UpsertAgent(agent *Agent) error {
+	var existing Agent
+	err := s.db.Where("agent_id = ?", agent.AgentID).First(&existing).Error
+	if err == gorm.ErrRecordNotFound {
+		return s.db.Create(agent).Error
+	}
+	if err != nil {
+		return err
+	}
+	return s.db.Model(&existing).Updates(map[string]interface{}{
+		"display_name": agent.DisplayName,
+		"hostname":     agent.Hostname,
+		"ip":           agent.IP,
+		"last_seen_at": agent.LastSeenAt,
+	}).Error
+}
+
+// Domain operations
+
+func (s *Store) CreateDomain(domain *Domain) error {
+	return s.db.Select("Host", "Port", "Protocol", "IsGlobal", "Remark", "CreatedAt").Create(domain).Error
+}
+
+func (s *Store) GetDomain(id uint) (*Domain, error) {
+	var domain Domain
+	err := s.db.First(&domain, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &domain, nil
+}
+
+func (s *Store) ListGlobalDomains() ([]Domain, error) {
+	var domains []Domain
+	err := s.db.Where("is_global = ?", true).Find(&domains).Error
+	return domains, err
+}
+
+func (s *Store) ListAllDomains() ([]Domain, error) {
+	var domains []Domain
+	err := s.db.Find(&domains).Error
+	return domains, err
+}
+
+func (s *Store) DeleteDomain(id uint) error {
+	return s.db.Delete(&Domain{}, id).Error
+}
+
+// Override operations
+
+func (s *Store) CreateOverride(override *AgentDomainOverride) error {
+	return s.db.Create(override).Error
+}
+
+func (s *Store) DeleteOverride(agentID string, domainID uint) error {
+	return s.db.Where("agent_id = ? AND domain_id = ?", agentID, domainID).Delete(&AgentDomainOverride{}).Error
+}
+
+func (s *Store) GetAgentOverrides(agentID string) (includes []uint, excludes []uint, err error) {
+	var overrides []AgentDomainOverride
+	if err = s.db.Where("agent_id = ?", agentID).Find(&overrides).Error; err != nil {
+		return nil, nil, err
+	}
+	for _, o := range overrides {
+		if o.Action == "include" {
+			includes = append(includes, o.DomainID)
+		} else if o.Action == "exclude" {
+			excludes = append(excludes, o.DomainID)
+		}
+	}
+	return includes, excludes, nil
+}
+
+// CheckResult operations
+
+func (s *Store) SaveCheckResults(results []CheckResult) error {
+	if len(results) == 0 {
+		return nil
+	}
+	return s.db.Create(&results).Error
+}
