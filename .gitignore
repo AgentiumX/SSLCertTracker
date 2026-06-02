@@ -1,0 +1,24 @@
+# Binaries
+server/server
+server/server.exe
+agent/agent
+agent/agent.exe
+
+# Config
+*.local.yaml
+agent_id
+
+# Data
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
