@@ -1,0 +1,11 @@
+server_url: "http://localhost:8080"
+auth_token: "your-shared-token-here"
+
+agent:
+  display_name: "Beijing-prod-01"
+  id_file: "./agent_id"
+
+check:
+  interval: "1h"
+  timeout: "10s"
+  concurrency: 50
