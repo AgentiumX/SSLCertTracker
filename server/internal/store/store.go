@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -117,4 +118,61 @@ func (s *Store) SaveCheckResults(results []CheckResult) error {
 		return nil
 	}
 	return s.db.Create(&results).Error
+}
+
+// LatestResults returns the most recent CheckResult per (agent_id, domain_id).
+// Implemented in Go to avoid SQL dialect differences between SQLite and MySQL.
+func (s *Store) LatestResults() ([]CheckResult, error) {
+	var all []CheckResult
+	if err := s.db.Order("checked_at DESC").Find(&all).Error; err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	out := make([]CheckResult, 0, len(all))
+	for _, r := range all {
+		key := r.AgentID + "|" + fmt.Sprint(r.DomainID)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// LatestResultsForDomain returns the most recent CheckResult per agent for a single domain.
+func (s *Store) LatestResultsForDomain(domainID uint) ([]CheckResult, error) {
+	var all []CheckResult
+	if err := s.db.Where("domain_id = ?", domainID).Order("checked_at DESC").Find(&all).Error; err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	out := make([]CheckResult, 0, len(all))
+	for _, r := range all {
+		if seen[r.AgentID] {
+			continue
+		}
+		seen[r.AgentID] = true
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// CountAgents returns (online, total). Online means LastSeenAt within onlineWindow.
+func (s *Store) CountAgents(onlineWindow time.Duration) (online, total int64, err error) {
+	if err = s.db.Model(&Agent{}).Count(&total).Error; err != nil {
+		return 0, 0, err
+	}
+	threshold := time.Now().Add(-onlineWindow)
+	if err = s.db.Model(&Agent{}).Where("last_seen_at >= ?", threshold).Count(&online).Error; err != nil {
+		return 0, 0, err
+	}
+	return online, total, nil
+}
+
+// ListAgents returns all agents.
+func (s *Store) ListAgents() ([]Agent, error) {
+	var agents []Agent
+	err := s.db.Find(&agents).Error
+	return agents, err
 }
