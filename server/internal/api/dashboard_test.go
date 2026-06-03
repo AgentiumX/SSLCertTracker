@@ -13,12 +13,24 @@ import (
 	"ssl-tracker/server/internal/store"
 )
 
+func mustOK(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func setupDashboardAPI(t *testing.T) (*gin.Engine, *store.Store) {
 	gin.SetMode(gin.TestMode)
 	dbPath := filepath.Join(t.TempDir(), "dash.db")
-	db, _ := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { sqlDB, _ := db.DB(); sqlDB.Close() })
-	db.AutoMigrate(&store.Agent{}, &store.Domain{}, &store.AgentDomainOverride{}, &store.CheckResult{})
+	if err := db.AutoMigrate(&store.Agent{}, &store.Domain{}, &store.AgentDomainOverride{}, &store.CheckResult{}); err != nil {
+		t.Fatal(err)
+	}
 	s := store.NewStore(db)
 
 	r := gin.New()
@@ -32,14 +44,14 @@ func setupDashboardAPI(t *testing.T) (*gin.Engine, *store.Store) {
 func TestDashboardOverview(t *testing.T) {
 	r, s := setupDashboardAPI(t)
 	now := time.Now()
-	s.CreateAgent(&store.Agent{AgentID: "a1", DisplayName: "A1", RegisteredAt: now, LastSeenAt: now})
-	s.CreateAgent(&store.Agent{AgentID: "a2", DisplayName: "A2", RegisteredAt: now, LastSeenAt: now.Add(-5 * time.Hour)})
-	s.CreateDomain(&store.Domain{Host: "ok.com", Port: 443, Protocol: "https", IsGlobal: true})
-	s.CreateDomain(&store.Domain{Host: "bad.com", Port: 443, Protocol: "https", IsGlobal: true})
-	s.SaveCheckResults([]store.CheckResult{
+	mustOK(t, s.CreateAgent(&store.Agent{AgentID: "a1", DisplayName: "A1", RegisteredAt: now, LastSeenAt: now}))
+	mustOK(t, s.CreateAgent(&store.Agent{AgentID: "a2", DisplayName: "A2", RegisteredAt: now, LastSeenAt: now.Add(-5 * time.Hour)}))
+	mustOK(t, s.CreateDomain(&store.Domain{Host: "ok.com", Port: 443, Protocol: "https", IsGlobal: true}))
+	mustOK(t, s.CreateDomain(&store.Domain{Host: "bad.com", Port: 443, Protocol: "https", IsGlobal: true}))
+	mustOK(t, s.SaveCheckResults([]store.CheckResult{
 		{AgentID: "a1", DomainID: 1, CheckedAt: now, Status: "ok"},
 		{AgentID: "a1", DomainID: 2, CheckedAt: now, Status: "expired"},
-	})
+	}))
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/dashboard/overview", nil))
@@ -71,13 +83,13 @@ func TestDashboardOverview(t *testing.T) {
 func TestDashboardDomainsList(t *testing.T) {
 	r, s := setupDashboardAPI(t)
 	now := time.Now()
-	s.CreateAgent(&store.Agent{AgentID: "a1", DisplayName: "A1", RegisteredAt: now, LastSeenAt: now})
-	s.CreateAgent(&store.Agent{AgentID: "a2", DisplayName: "A2", RegisteredAt: now, LastSeenAt: now})
-	s.CreateDomain(&store.Domain{Host: "x.com", Port: 443, Protocol: "https", IsGlobal: true})
-	s.SaveCheckResults([]store.CheckResult{
+	mustOK(t, s.CreateAgent(&store.Agent{AgentID: "a1", DisplayName: "A1", RegisteredAt: now, LastSeenAt: now}))
+	mustOK(t, s.CreateAgent(&store.Agent{AgentID: "a2", DisplayName: "A2", RegisteredAt: now, LastSeenAt: now}))
+	mustOK(t, s.CreateDomain(&store.Domain{Host: "x.com", Port: 443, Protocol: "https", IsGlobal: true}))
+	mustOK(t, s.SaveCheckResults([]store.CheckResult{
 		{AgentID: "a1", DomainID: 1, CheckedAt: now, Status: "ok"},
 		{AgentID: "a2", DomainID: 1, CheckedAt: now, Status: "expired"},
-	})
+	}))
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/dashboard/domains", nil))
@@ -111,11 +123,11 @@ func TestDashboardDomainDetail(t *testing.T) {
 	r, s := setupDashboardAPI(t)
 	now := time.Now()
 	notAfter := now.Add(30 * 24 * time.Hour)
-	s.CreateAgent(&store.Agent{AgentID: "a1", DisplayName: "Beijing", RegisteredAt: now, LastSeenAt: now})
-	s.CreateDomain(&store.Domain{Host: "d.com", Port: 443, Protocol: "https", IsGlobal: true})
-	s.SaveCheckResults([]store.CheckResult{
+	mustOK(t, s.CreateAgent(&store.Agent{AgentID: "a1", DisplayName: "Beijing", RegisteredAt: now, LastSeenAt: now}))
+	mustOK(t, s.CreateDomain(&store.Domain{Host: "d.com", Port: 443, Protocol: "https", IsGlobal: true}))
+	mustOK(t, s.SaveCheckResults([]store.CheckResult{
 		{AgentID: "a1", DomainID: 1, CheckedAt: now, Status: "ok", NotAfter: &notAfter, Issuer: "LE"},
-	})
+	}))
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/dashboard/domains/1", nil))
