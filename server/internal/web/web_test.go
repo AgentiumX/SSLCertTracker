@@ -16,8 +16,8 @@ func TestHandler_RootReturnsIndex(t *testing.T) {
 	if rr.Code != 200 {
 		t.Fatalf("expected 200, got %d; body=%s", rr.Code, rr.Body.String())
 	}
-	if !strings.Contains(rr.Body.String(), "Frontend not built") {
-		t.Fatalf("body does not contain placeholder text: %s", rr.Body.String())
+	if !strings.Contains(rr.Body.String(), `<div id="app">`) {
+		t.Fatalf("body does not contain SPA mount point: %s", rr.Body.String())
 	}
 }
 
@@ -29,8 +29,8 @@ func TestHandler_SPAFallback(t *testing.T) {
 	if rr.Code != 200 {
 		t.Fatalf("expected 200, got %d; body=%s", rr.Code, rr.Body.String())
 	}
-	if !strings.Contains(rr.Body.String(), "Frontend not built") {
-		t.Fatalf("body does not contain placeholder text: %s", rr.Body.String())
+	if !strings.Contains(rr.Body.String(), `<div id="app">`) {
+		t.Fatalf("body does not contain SPA mount point: %s", rr.Body.String())
 	}
 }
 

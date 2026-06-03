@@ -22,3 +22,10 @@ data/
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend artifacts
+web/node_modules
+web/dist
+server/internal/web/dist/assets
+server/internal/web/dist/index.html
+!server/internal/web/dist/.gitkeep
