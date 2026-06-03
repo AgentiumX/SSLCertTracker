@@ -181,3 +181,24 @@ func (s *Store) ListAgents() ([]Agent, error) {
 	err := s.db.Find(&agents).Error
 	return agents, err
 }
+
+// User operations
+
+func (s *Store) CreateUser(u *User) error {
+	return s.db.Create(u).Error
+}
+
+func (s *Store) GetUserByUsername(username string) (*User, error) {
+	var u User
+	err := s.db.Where("username = ?", username).First(&u).Error
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (s *Store) CountUsers() (int64, error) {
+	var n int64
+	err := s.db.Model(&User{}).Count(&n).Error
+	return n, err
+}
