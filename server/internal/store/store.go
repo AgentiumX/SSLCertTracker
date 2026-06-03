@@ -123,8 +123,12 @@ func (s *Store) SaveCheckResults(results []CheckResult) error {
 // LatestResults returns the most recent CheckResult per (agent_id, domain_id).
 // Implemented in Go to avoid SQL dialect differences between SQLite and MySQL.
 func (s *Store) LatestResults() ([]CheckResult, error) {
+	// Bound the scan to 7 days. Records older than this are stale (retention
+	// default cleans them up), and "latest" results never live that far back
+	// for an active agent.
+	cutoff := time.Now().Add(-7 * 24 * time.Hour)
 	var all []CheckResult
-	if err := s.db.Order("checked_at DESC").Find(&all).Error; err != nil {
+	if err := s.db.Where("checked_at >= ?", cutoff).Order("checked_at DESC").Find(&all).Error; err != nil {
 		return nil, err
 	}
 	seen := make(map[string]bool)
@@ -142,8 +146,9 @@ func (s *Store) LatestResults() ([]CheckResult, error) {
 
 // LatestResultsForDomain returns the most recent CheckResult per agent for a single domain.
 func (s *Store) LatestResultsForDomain(domainID uint) ([]CheckResult, error) {
+	cutoff := time.Now().Add(-7 * 24 * time.Hour)
 	var all []CheckResult
-	if err := s.db.Where("domain_id = ?", domainID).Order("checked_at DESC").Find(&all).Error; err != nil {
+	if err := s.db.Where("domain_id = ? AND checked_at >= ?", domainID, cutoff).Order("checked_at DESC").Find(&all).Error; err != nil {
 		return nil, err
 	}
 	seen := make(map[string]bool)

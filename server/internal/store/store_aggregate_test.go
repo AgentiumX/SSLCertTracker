@@ -47,6 +47,12 @@ func TestLatestResultsForDomain(t *testing.T) {
 	if len(results) != 2 {
 		t.Fatalf("expected 2 rows (one per agent), got %d", len(results))
 	}
+	// Verify a1 took the newer "expiring" record, not the older "ok"
+	for _, r := range results {
+		if r.AgentID == "a1" && r.Status != "expiring" {
+			t.Errorf("a1 expected expiring (newest), got %s", r.Status)
+		}
+	}
 }
 
 func TestCountAgentsOnline(t *testing.T) {
