@@ -25,12 +25,6 @@ type loginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func unauthenticated(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-		"error": gin.H{"code": "unauthenticated", "message": "not logged in"},
-	})
-}
-
 func invalidCredentials(c *gin.Context) {
 	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 		"error": gin.H{"code": "invalid_credentials", "message": "invalid credentials"},
