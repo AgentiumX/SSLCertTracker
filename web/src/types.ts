@@ -47,3 +47,8 @@ export interface DomainDetail {
   }
   results: AgentResultRow[]
 }
+
+export interface User {
+  id: number
+  username: string
+}
