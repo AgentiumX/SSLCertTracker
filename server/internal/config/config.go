@@ -52,6 +52,7 @@ type AlertConfig struct {
 type SessionConfig struct {
 	Secret string `yaml:"secret"`
 	TTL    string `yaml:"ttl"`
+	Secure bool   `yaml:"secure"`
 }
 
 func Load(path string) (*Config, error) {

@@ -3,8 +3,10 @@ server:
 
 auth:
   agent_token: "your-shared-token-here"
+  # 首次启动时，若 users 表为空，使用以下账号创建初始管理员
+  # 创建后可清空或注释 admin_password（重启不会再被使用）
   admin_username: "admin"
-  admin_password: "change-me"
+  admin_password: "change-me-on-first-run"
 
 database:
   type: sqlite  # sqlite | mysql
@@ -22,5 +24,6 @@ alert:
   daily_reminder_timezone: "Asia/Shanghai"
 
 session:
-  secret: "random-secret-change-me"
-  ttl: "24h"
+  secret: ""        # 本期不使用，保留供未来 CSRF / 签名 Session 使用
+  ttl: "24h"        # Session 有效期；每次访问自动续期
+  secure: false     # 生产环境 HTTPS 部署改为 true，强制 Cookie 仅 HTTPS 传输
