@@ -9,7 +9,8 @@ import (
 	"ssl-tracker/server/internal/store"
 )
 
-func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int, webHandler http.Handler) *gin.Engine {
+func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int,
+	sessions *auth.SessionStore, cookieSecure bool, webHandler http.Handler) *gin.Engine {
 	r := gin.Default()
 
 	agentGroup := r.Group("/api/agent")
@@ -29,7 +30,13 @@ func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int, web
 		dash.GET("/domains/:id", h.DomainDetail)
 	}
 
+	authH := NewAuthHandler(s, sessions, cookieSecure)
+	r.POST("/api/auth/login", authH.Login)
+	r.POST("/api/auth/logout", authH.Logout)
+	r.GET("/api/auth/me", auth.AuthMiddleware(sessions), authH.Me)
+
 	adminGroup := r.Group("/api/admin")
+	adminGroup.Use(auth.AuthMiddleware(sessions))
 	{
 		h := NewAdminHandler(s)
 		adminGroup.POST("/domains", h.CreateDomain)
@@ -38,7 +45,6 @@ func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int, web
 		adminGroup.DELETE("/domains/:id", h.DeleteDomain)
 	}
 
-	// Static + SPA fallback for all non-API paths.
 	if webHandler != nil {
 		r.NoRoute(gin.WrapH(webHandler))
 	}
