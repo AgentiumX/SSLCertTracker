@@ -11,6 +11,7 @@ import (
 	"ssl-tracker/server/internal/api"
 	"ssl-tracker/server/internal/config"
 	"ssl-tracker/server/internal/store"
+	"ssl-tracker/server/internal/web"
 )
 
 func main() {
@@ -48,7 +49,7 @@ func main() {
 	}
 
 	s := store.NewStore(db)
-	r := api.SetupRouter(s, cfg.Auth.AgentToken, cfg.Alert.ExpireThresholdDays)
+	r := api.SetupRouter(s, cfg.Auth.AgentToken, cfg.Alert.ExpireThresholdDays, web.Handler())
 
 	log.Printf("Server starting on %s", cfg.Server.Listen)
 	if err := r.Run(cfg.Server.Listen); err != nil {
