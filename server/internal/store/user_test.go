@@ -6,16 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func setupUserTestDB(t *testing.T) *Store {
-	s := setupTestDB(t)
-	if err := s.db.AutoMigrate(&User{}); err != nil {
-		t.Fatal(err)
-	}
-	return s
-}
-
 func TestCreateUser(t *testing.T) {
-	s := setupUserTestDB(t)
+	s := setupTestDB(t)
 	u := &User{Username: "admin", PasswordHash: "$2a$10$hash"}
 	if err := s.CreateUser(u); err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
@@ -26,7 +18,7 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestCreateUser_Duplicate(t *testing.T) {
-	s := setupUserTestDB(t)
+	s := setupTestDB(t)
 	if err := s.CreateUser(&User{Username: "admin", PasswordHash: "h"}); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +29,7 @@ func TestCreateUser_Duplicate(t *testing.T) {
 }
 
 func TestGetUserByUsername_Found(t *testing.T) {
-	s := setupUserTestDB(t)
+	s := setupTestDB(t)
 	if err := s.CreateUser(&User{Username: "admin", PasswordHash: "h"}); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +43,7 @@ func TestGetUserByUsername_Found(t *testing.T) {
 }
 
 func TestGetUserByUsername_NotFound(t *testing.T) {
-	s := setupUserTestDB(t)
+	s := setupTestDB(t)
 	_, err := s.GetUserByUsername("nope")
 	if err != gorm.ErrRecordNotFound {
 		t.Errorf("expected ErrRecordNotFound, got %v", err)
@@ -59,7 +51,7 @@ func TestGetUserByUsername_NotFound(t *testing.T) {
 }
 
 func TestCountUsers(t *testing.T) {
-	s := setupUserTestDB(t)
+	s := setupTestDB(t)
 	n, err := s.CountUsers()
 	if err != nil {
 		t.Fatal(err)
