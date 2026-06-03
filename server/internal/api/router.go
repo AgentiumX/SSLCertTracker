@@ -45,6 +45,7 @@ func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int,
 		adminGroup.DELETE("/domains/:id", h.DeleteDomain)
 	}
 
+	// Static + SPA fallback for all non-API paths.
 	if webHandler != nil {
 		r.NoRoute(gin.WrapH(webHandler))
 	}
