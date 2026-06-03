@@ -14,7 +14,10 @@ const router = useRouter()
 
 function redirectTarget(): string {
   const r = route.query.redirect
-  return typeof r === 'string' && r.startsWith('/') ? r : '/'
+  if (typeof r !== 'string') return '/'
+  // Reject protocol-relative URLs (//evil.com) and backslash variants (\\evil.com).
+  if (!r.startsWith('/') || r.startsWith('//') || r.startsWith('/\\')) return '/'
+  return r
 }
 
 async function ensureInitialized() {
