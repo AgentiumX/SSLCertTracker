@@ -4,24 +4,29 @@ A self-hosted SSL certificate monitoring system with Server + Agent architecture
 
 ## Architecture
 
-- **Server**: Single Go binary with embedded Vue frontend (frontend in Plan 2). Provides Agent API, Admin API, and Dashboard.
+- **Server**: Single Go binary with embedded Vue 3 dashboard. Provides Agent API, public Dashboard API, and Admin API.
 - **Agent**: Single Go binary deployed across regions. Pulls domain list from Server, performs TLS handshakes, reports results.
 - **Database**: SQLite (default) or MySQL via GORM.
 
 ## Build
 
 ```bash
-# Build server
-cd server && go build -o server ./cmd/server
+# Build server (includes frontend build)
+make build-server
 
 # Build agent
-cd agent && go build -o agent ./cmd/agent
+make build-agent
+
+# Build everything
+make build-all
 ```
 
-Or use the Makefile from project root:
+The frontend lives in `web/` (Vue 3 + Vite + TypeScript + Tailwind). `make build-web` runs `vite build` and outputs to `server/internal/web/dist/`, which is then `embed`ed into the server binary.
+
+For frontend-only iteration:
 ```bash
-make build-server
-make build-agent
+make dev-server  # in one terminal — Go server on :8080
+make dev-web     # in another — Vite dev server on :5173 with /api proxy
 ```
 
 ## Run
@@ -96,6 +101,62 @@ curl http://localhost:8080/api/admin/domains/1
 curl -X DELETE http://localhost:8080/api/admin/domains/1
 ```
 
+## Dashboard
+
+Open `http://localhost:8080/` in a browser to see the public dashboard:
+
+- **Overview** (`/`): 4 stat cards (total domains, healthy, alert, agents online) + a list of all domains showing per-domain health (`X / Y healthy`)
+- **Domain detail** (`/domains/:id`): per-Agent result cards showing status, expiry date, issuer, SANs, and any error message
+
+The dashboard is **read-only and unauthenticated** in this release (Plan 3 will add admin login + write operations). Pages auto-refresh every 30 seconds.
+
+## Admin API
+
+All admin endpoints are at `/api/admin/*`. **Authentication is not yet enforced** in this MVP — running the server on a public network without a reverse-proxy ACL will leak control.
+
+### Create domain
+
+```bash
+curl -X POST http://localhost:8080/api/admin/domains \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "example.com",
+    "port": 443,
+    "protocol": "https",
+    "is_global": true,
+    "remark": "marketing site"
+  }'
+```
+
+Response: `{"id": 1}`
+
+### List domains
+
+```bash
+curl http://localhost:8080/api/admin/domains
+```
+
+### Get domain
+
+```bash
+curl http://localhost:8080/api/admin/domains/1
+```
+
+### Delete domain
+
+```bash
+curl -X DELETE http://localhost:8080/api/admin/domains/1
+```
+
+## Dashboard
+
+Open `http://localhost:8080/` in a browser to see the public dashboard:
+
+- **Overview** (`/`): 4 stat cards (total domains, healthy, alert, agents online) + a list of all domains showing per-domain health (`X / Y healthy`)
+- **Domain detail** (`/domains/:id`): per-Agent result cards showing status, expiry date, issuer, SANs, and any error message
+
+The dashboard is **read-only and unauthenticated** in this release (Plan 3 will add admin login + write operations). Pages auto-refresh every 30 seconds.
+
 ## Agent API
 
 Agent endpoints require `Authorization: Bearer <agent_token>`.
@@ -115,5 +176,4 @@ See [SSL Cert Tracker design spec](docs/superpowers/specs/2026-06-02-ssl-cert-tr
 
 ## Roadmap
 
-- **Plan 2**: Vue 3 frontend dashboard
 - **Plan 3**: Alert engine (email, webhook, DingTalk, Feishu, WeCom) + production hardening (admin auth, history retention, daily reminders)
