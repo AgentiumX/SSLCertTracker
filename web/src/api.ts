@@ -1,4 +1,4 @@
-import type { Overview, DomainsResponse, DomainDetail, User } from './types'
+import type { Overview, DomainsResponse, DomainDetail, User, DomainAdmin, AgentAdmin, Override } from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -38,4 +38,30 @@ export const authApi = {
   logout: () =>
     request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   me: () => request<{ user: User }>('/api/auth/me'),
+}
+
+export const adminApi = {
+  listDomains: () =>
+    request<{ domains: DomainAdmin[] }>('/api/admin/domains'),
+  createDomain: (req: { host: string; port: number; protocol: string; is_global: boolean; remark: string }) =>
+    request<{ id: number }>('/api/admin/domains', { method: 'POST', body: JSON.stringify(req) }),
+  updateDomain: (id: number, req: { is_global: boolean; remark: string }) =>
+    request<{ ok: boolean }>(`/api/admin/domains/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
+  deleteDomain: (id: number) =>
+    request<{ ok: boolean }>(`/api/admin/domains/${id}`, { method: 'DELETE' }),
+
+  listAgents: () =>
+    request<{ agents: AgentAdmin[] }>('/api/admin/agents'),
+  updateAgentRemark: (id: string, remark: string) =>
+    request<{ ok: boolean }>(`/api/admin/agents/${id}`, { method: 'PUT', body: JSON.stringify({ remark }) }),
+
+  listOverrides: (agentId: string) =>
+    request<{ overrides: Override[] }>(`/api/admin/agents/${agentId}/overrides`),
+  setOverride: (agentId: string, domainId: number, action: 'include' | 'exclude') =>
+    request<{ ok: boolean }>(`/api/admin/agents/${agentId}/overrides`, {
+      method: 'POST',
+      body: JSON.stringify({ domain_id: domainId, action }),
+    }),
+  deleteOverride: (agentId: string, domainId: number) =>
+    request<{ ok: boolean }>(`/api/admin/agents/${agentId}/overrides/${domainId}`, { method: 'DELETE' }),
 }

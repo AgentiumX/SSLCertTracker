@@ -52,3 +52,29 @@ export interface User {
   id: number
   username: string
 }
+
+export interface DomainAdmin {
+  id: number
+  host: string
+  port: number
+  protocol: string
+  is_global: boolean
+  remark: string
+  created_at: string
+}
+
+export interface AgentAdmin {
+  agent_id: string
+  display_name: string
+  hostname: string
+  ip: string
+  remark: string
+  registered_at: string
+  last_seen_at: string
+  is_online: boolean
+}
+
+export interface Override {
+  domain_id: number
+  action: 'include' | 'exclude'
+}
