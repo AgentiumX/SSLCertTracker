@@ -43,6 +43,39 @@ func setupRouter(t *testing.T) (*gin.Engine, *store.Store) {
 	return r, s
 }
 
+func TestListDomains_SnakeCaseFields(t *testing.T) {
+	r, s := setupRouter(t)
+	d := &store.Domain{Host: "example.com", Port: 443, Protocol: "https", IsGlobal: true, Remark: "test"}
+	s.CreateDomain(d)
+	req := httptest.NewRequest("GET", "/api/admin/domains", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp struct {
+		Domains []struct {
+			ID        uint   `json:"id"`
+			Host      string `json:"host"`
+			IsGlobal  bool   `json:"is_global"`
+			CreatedAt string `json:"created_at"`
+		} `json:"domains"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.Domains) != 1 {
+		t.Fatalf("expected 1 domain, got %d", len(resp.Domains))
+	}
+	if resp.Domains[0].ID == 0 {
+		t.Errorf("id field not populated (expected non-zero)")
+	}
+	if resp.Domains[0].Host != "example.com" {
+		t.Errorf("expected host=example.com, got %q", resp.Domains[0].Host)
+	}
+	if !resp.Domains[0].IsGlobal {
+		t.Errorf("expected is_global=true")
+	}
+}
+
 func TestUpdateDomain_Success(t *testing.T) {
 	r, s := setupRouter(t)
 	d := &store.Domain{Host: "old.com", Port: 443, Protocol: "https", IsGlobal: false, Remark: "old"}

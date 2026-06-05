@@ -45,7 +45,19 @@ func (h *AdminHandler) ListDomains(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "db_error", "message": err.Error()}})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"domains": domains})
+	out := make([]gin.H, 0, len(domains))
+	for _, d := range domains {
+		out = append(out, gin.H{
+			"id":         d.ID,
+			"host":       d.Host,
+			"port":       d.Port,
+			"protocol":   d.Protocol,
+			"is_global":  d.IsGlobal,
+			"remark":     d.Remark,
+			"created_at": d.CreatedAt,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"domains": out})
 }
 
 func (h *AdminHandler) GetDomain(c *gin.Context) {
