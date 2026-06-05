@@ -7,6 +7,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const AgentOnlineWindow = 3 * time.Hour
+
 type Store struct {
 	db *gorm.DB
 }
@@ -201,4 +203,45 @@ func (s *Store) CountUsers() (int64, error) {
 	var n int64
 	err := s.db.Model(&User{}).Count(&n).Error
 	return n, err
+}
+
+// UpdateDomainMeta updates only is_global and remark; host/port/protocol are immutable.
+func (s *Store) UpdateDomainMeta(id uint, isGlobal bool, remark string) error {
+	res := s.db.Model(&Domain{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"is_global": isGlobal,
+		"remark":    remark,
+	})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+// UpdateAgentRemark updates agent remark field only.
+func (s *Store) UpdateAgentRemark(agentID, remark string) error {
+	res := s.db.Model(&Agent{}).Where("agent_id = ?", agentID).Update("remark", remark)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+// ListOverrides returns all overrides for an agent.
+func (s *Store) ListOverrides(agentID string) ([]AgentDomainOverride, error) {
+	var overrides []AgentDomainOverride
+	err := s.db.Where("agent_id = ?", agentID).Find(&overrides).Error
+	return overrides, err
+}
+
+// UpsertOverride inserts or updates an override.
+func (s *Store) UpsertOverride(agentID string, domainID uint, action string) error {
+	override := &AgentDomainOverride{AgentID: agentID, DomainID: domainID, Action: action}
+	return s.db.Where(AgentDomainOverride{AgentID: agentID, DomainID: domainID}).
+		Assign(AgentDomainOverride{Action: action}).FirstOrCreate(override).Error
 }
