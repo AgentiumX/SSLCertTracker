@@ -96,3 +96,15 @@ func TestUpdateDomain_IgnoresHostInBody(t *testing.T) {
 		t.Errorf("host should not change, got %q", got.Host)
 	}
 }
+
+func TestUpdateDomain_MissingRemark(t *testing.T) {
+	r, _ := setupRouter(t)
+	body := `{"is_global": true}`
+	req := httptest.NewRequest("PUT", "/api/admin/domains/1", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 400 {
+		t.Errorf("expected 400 for missing remark, got %d", w.Code)
+	}
+}

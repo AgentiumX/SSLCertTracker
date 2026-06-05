@@ -81,8 +81,8 @@ func (h *AdminHandler) UpdateDomain(c *gin.Context) {
 		return
 	}
 	var req struct {
-		IsGlobal *bool  `json:"is_global"`
-		Remark   string `json:"remark"`
+		IsGlobal *bool   `json:"is_global"`
+		Remark   *string `json:"remark"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "invalid_request", "message": err.Error()}})
@@ -92,7 +92,11 @@ func (h *AdminHandler) UpdateDomain(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "invalid_request", "message": "is_global is required"}})
 		return
 	}
-	if err := h.store.UpdateDomainMeta(uint(id), *req.IsGlobal, req.Remark); err != nil {
+	if req.Remark == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "invalid_request", "message": "remark is required"}})
+		return
+	}
+	if err := h.store.UpdateDomainMeta(uint(id), *req.IsGlobal, *req.Remark); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "not_found", "message": "domain not found"}})
 			return
