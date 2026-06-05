@@ -37,6 +37,9 @@ func setupRouter(t *testing.T) (*gin.Engine, *store.Store) {
 	r.DELETE("/api/admin/domains/:id", adm.DeleteDomain)
 	r.GET("/api/admin/agents", adm.ListAgents)
 	r.PUT("/api/admin/agents/:id", adm.UpdateAgent)
+	r.GET("/api/admin/agents/:id/overrides", adm.ListOverrides)
+	r.POST("/api/admin/agents/:id/overrides", adm.SetOverride)
+	r.DELETE("/api/admin/agents/:id/overrides/:domain_id", adm.DeleteOverride)
 	return r, s
 }
 
@@ -174,5 +177,160 @@ func TestUpdateAgentRemark_NotFound(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != 404 {
 		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestListOverrides_Empty(t *testing.T) {
+	r, _ := setupRouter(t)
+	req := httptest.NewRequest("GET", "/api/admin/agents/a1/overrides", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp struct {
+		Overrides []interface{} `json:"overrides"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.Overrides) != 0 {
+		t.Errorf("expected 0 overrides, got %d", len(resp.Overrides))
+	}
+}
+
+func TestListOverrides_IncludeAndExclude(t *testing.T) {
+	r, s := setupRouter(t)
+	a := &store.Agent{AgentID: "a1", DisplayName: "A1", LastSeenAt: time.Now()}
+	d1 := &store.Domain{Host: "d1.com", Port: 443, Protocol: "https"}
+	d2 := &store.Domain{Host: "d2.com", Port: 443, Protocol: "https"}
+	s.CreateAgent(a)
+	s.CreateDomain(d1)
+	s.CreateDomain(d2)
+	s.CreateOverride(&store.AgentDomainOverride{AgentID: "a1", DomainID: d1.ID, Action: "include"})
+	s.CreateOverride(&store.AgentDomainOverride{AgentID: "a1", DomainID: d2.ID, Action: "exclude"})
+	req := httptest.NewRequest("GET", "/api/admin/agents/a1/overrides", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp struct {
+		Overrides []struct {
+			DomainID uint   `json:"domain_id"`
+			Action   string `json:"action"`
+		} `json:"overrides"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.Overrides) != 2 {
+		t.Fatalf("expected 2 overrides, got %d", len(resp.Overrides))
+	}
+}
+
+func TestSetOverride_New(t *testing.T) {
+	r, s := setupRouter(t)
+	a := &store.Agent{AgentID: "a1", DisplayName: "A1", LastSeenAt: time.Now()}
+	d := &store.Domain{Host: "d.com", Port: 443, Protocol: "https"}
+	s.CreateAgent(a)
+	s.CreateDomain(d)
+	body := `{"domain_id": 1, "action": "include"}`
+	req := httptest.NewRequest("POST", "/api/admin/agents/a1/overrides", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestSetOverride_UpdateAction(t *testing.T) {
+	r, s := setupRouter(t)
+	a := &store.Agent{AgentID: "a1", DisplayName: "A1", LastSeenAt: time.Now()}
+	d := &store.Domain{Host: "d.com", Port: 443, Protocol: "https"}
+	s.CreateAgent(a)
+	s.CreateDomain(d)
+	s.CreateOverride(&store.AgentDomainOverride{AgentID: "a1", DomainID: d.ID, Action: "include"})
+	body := `{"domain_id": 1, "action": "exclude"}`
+	req := httptest.NewRequest("POST", "/api/admin/agents/a1/overrides", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	overrides, _ := s.ListOverrides("a1")
+	if len(overrides) != 1 || overrides[0].Action != "exclude" {
+		t.Errorf("expected 1 override with action=exclude, got %+v", overrides)
+	}
+}
+
+func TestSetOverride_InvalidAction(t *testing.T) {
+	r, s := setupRouter(t)
+	a := &store.Agent{AgentID: "a1", DisplayName: "A1", LastSeenAt: time.Now()}
+	d := &store.Domain{Host: "d.com", Port: 443, Protocol: "https"}
+	s.CreateAgent(a)
+	s.CreateDomain(d)
+	body := `{"domain_id": 1, "action": "invalid"}`
+	req := httptest.NewRequest("POST", "/api/admin/agents/a1/overrides", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 400 {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestSetOverride_DomainNotFound(t *testing.T) {
+	r, s := setupRouter(t)
+	a := &store.Agent{AgentID: "a1", DisplayName: "A1", LastSeenAt: time.Now()}
+	s.CreateAgent(a)
+	body := `{"domain_id": 999, "action": "include"}`
+	req := httptest.NewRequest("POST", "/api/admin/agents/a1/overrides", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 404 {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestSetOverride_AgentNotFound(t *testing.T) {
+	r, s := setupRouter(t)
+	d := &store.Domain{Host: "d.com", Port: 443, Protocol: "https"}
+	s.CreateDomain(d)
+	body := `{"domain_id": 1, "action": "include"}`
+	req := httptest.NewRequest("POST", "/api/admin/agents/999/overrides", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 404 {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestDeleteOverride_Success(t *testing.T) {
+	r, s := setupRouter(t)
+	a := &store.Agent{AgentID: "a1", DisplayName: "A1", LastSeenAt: time.Now()}
+	d := &store.Domain{Host: "d.com", Port: 443, Protocol: "https"}
+	s.CreateAgent(a)
+	s.CreateDomain(d)
+	s.CreateOverride(&store.AgentDomainOverride{AgentID: "a1", DomainID: d.ID, Action: "include"})
+	req := httptest.NewRequest("DELETE", "/api/admin/agents/a1/overrides/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	overrides, _ := s.ListOverrides("a1")
+	if len(overrides) != 0 {
+		t.Errorf("expected 0 overrides after delete, got %d", len(overrides))
+	}
+}
+
+func TestDeleteOverride_Idempotent(t *testing.T) {
+	r, _ := setupRouter(t)
+	req := httptest.NewRequest("DELETE", "/api/admin/agents/a1/overrides/999", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Errorf("expected 200 for idempotent delete, got %d", w.Code)
 	}
 }
