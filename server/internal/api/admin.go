@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -99,6 +100,49 @@ func (h *AdminHandler) UpdateDomain(c *gin.Context) {
 	if err := h.store.UpdateDomainMeta(uint(id), *req.IsGlobal, *req.Remark); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "not_found", "message": "domain not found"}})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "db_error", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *AdminHandler) ListAgents(c *gin.Context) {
+	agents, err := h.store.ListAgents()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "db_error", "message": err.Error()}})
+		return
+	}
+	threshold := time.Now().Add(-store.AgentOnlineWindow)
+	out := make([]gin.H, 0, len(agents))
+	for _, a := range agents {
+		out = append(out, gin.H{
+			"agent_id":      a.AgentID,
+			"display_name":  a.DisplayName,
+			"hostname":      a.Hostname,
+			"ip":            a.IP,
+			"remark":        a.Remark,
+			"registered_at": a.RegisteredAt,
+			"last_seen_at":  a.LastSeenAt,
+			"is_online":     !a.LastSeenAt.IsZero() && a.LastSeenAt.After(threshold),
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"agents": out})
+}
+
+func (h *AdminHandler) UpdateAgent(c *gin.Context) {
+	agentID := c.Param("id")
+	var req struct {
+		Remark string `json:"remark"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "invalid_request", "message": err.Error()}})
+		return
+	}
+	if err := h.store.UpdateAgentRemark(agentID, req.Remark); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "not_found", "message": "agent not found"}})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "db_error", "message": err.Error()}})
