@@ -22,6 +22,26 @@ async function handleLogout() {
         <ShieldCheck :size="22" class="text-accent" />
         SSL Tracker
       </RouterLink>
+
+      <nav v-if="!loading && user" class="flex gap-1 ml-4">
+        <RouterLink
+          to="/admin/domains"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition"
+          active-class="text-ink bg-bg-subtle"
+          inactive-class="text-ink-soft hover:text-ink hover:bg-bg-subtle"
+        >
+          域名管理
+        </RouterLink>
+        <RouterLink
+          to="/admin/agents"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition"
+          active-class="text-ink bg-bg-subtle"
+          inactive-class="text-ink-soft hover:text-ink hover:bg-bg-subtle"
+        >
+          Agent 管理
+        </RouterLink>
+      </nav>
+
       <div class="flex-1" />
       <template v-if="!loading">
         <RouterLink
