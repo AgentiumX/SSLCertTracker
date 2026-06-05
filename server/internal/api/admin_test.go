@@ -135,11 +135,15 @@ func TestListAgents_IncludesOnlineFlag(t *testing.T) {
 	if len(resp.Agents) != 2 {
 		t.Fatalf("expected 2 agents, got %d", len(resp.Agents))
 	}
-	if !resp.Agents[0].IsOnline {
-		t.Errorf("agent a1 should be online")
+	byID := make(map[string]bool)
+	for _, a := range resp.Agents {
+		byID[a.AgentID] = a.IsOnline
 	}
-	if resp.Agents[1].IsOnline {
-		t.Errorf("agent a2 should be offline")
+	if !byID["a1"] {
+		t.Errorf("a1 should be online")
+	}
+	if byID["a2"] {
+		t.Errorf("a2 should be offline")
 	}
 }
 
