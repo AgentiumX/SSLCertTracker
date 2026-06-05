@@ -1,0 +1,26 @@
+server:
+  listen: ":8089"
+
+auth:
+  agent_token: "1234567890"
+  admin_username: "admin"
+  admin_password: "1234567890"
+
+database:
+  type: sqlite # sqlite | mysql
+  sqlite:
+    path: "./data/ssl-tracker.db"
+  mysql:
+    dsn: "user:pass@tcp(host:3306)/ssl_tracker?parseTime=true&charset=utf8mb4"
+
+retention:
+  history_days: 7
+
+alert:
+  expire_threshold_days: 15
+  daily_reminder_time: "09:00"
+  daily_reminder_timezone: "Asia/Shanghai"
+
+session:
+  secret: "1234567890"
+  ttl: "24h"
