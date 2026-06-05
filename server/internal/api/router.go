@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"ssl-tracker/server/internal/auth"
@@ -24,7 +23,7 @@ func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int,
 
 	dash := r.Group("/api/dashboard")
 	{
-		h := NewDashboardHandler(s, 3*time.Hour)
+		h := NewDashboardHandler(s, store.AgentOnlineWindow)
 		dash.GET("/overview", h.Overview)
 		dash.GET("/domains", h.Domains)
 		dash.GET("/domains/:id", h.DomainDetail)
@@ -42,7 +41,15 @@ func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int,
 		adminGroup.POST("/domains", h.CreateDomain)
 		adminGroup.GET("/domains", h.ListDomains)
 		adminGroup.GET("/domains/:id", h.GetDomain)
+		adminGroup.PUT("/domains/:id", h.UpdateDomain)
 		adminGroup.DELETE("/domains/:id", h.DeleteDomain)
+
+		adminGroup.GET("/agents", h.ListAgents)
+		adminGroup.PUT("/agents/:id", h.UpdateAgent)
+
+		adminGroup.GET("/agents/:id/overrides", h.ListOverrides)
+		adminGroup.POST("/agents/:id/overrides", h.SetOverride)
+		adminGroup.DELETE("/agents/:id/overrides/:domain_id", h.DeleteOverride)
 	}
 
 	// Static + SPA fallback for all non-API paths.
