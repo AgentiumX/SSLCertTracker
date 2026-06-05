@@ -49,6 +49,7 @@ function goToOverrides(agentId: string) {
 
 function formatOffline(lastSeen: string): string {
   const diff = Date.now() - new Date(lastSeen).getTime()
+  if (Number.isNaN(diff)) return '从未上线'
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(hours / 24)
   if (days > 0) return `离线 ${days} 天前`
@@ -63,9 +64,9 @@ onMounted(loadAgents)
   <div class="max-w-6xl mx-auto px-6 py-8">
     <h1 class="text-2xl font-semibold text-ink mb-6">Agent 管理</h1>
 
-    <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-      <p class="text-sm text-red-600">{{ error }}</p>
-      <button @click="error = ''" class="text-xs text-red-500 hover:text-red-700">×</button>
+    <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md relative">
+      <p class="text-sm text-red-600 pr-6">{{ error }}</p>
+      <button @click="error = ''" class="absolute top-2 right-2 text-xs text-red-500 hover:text-red-700">×</button>
     </div>
 
     <div v-if="loading" class="text-center py-8 text-ink-soft">加载中...</div>
