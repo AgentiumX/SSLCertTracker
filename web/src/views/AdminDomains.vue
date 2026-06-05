@@ -4,7 +4,7 @@ import { adminApi } from '../api'
 import type { DomainAdmin } from '../types'
 
 const domains = ref<DomainAdmin[]>([])
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 const showCreateForm = ref(false)
 const editingId = ref<number | null>(null)
@@ -17,8 +17,8 @@ async function loadDomains() {
   try {
     const res = await adminApi.listDomains()
     domains.value = res.domains
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e) {
+    error.value = (e as Error).message
   } finally {
     loading.value = false
   }
@@ -26,12 +26,13 @@ async function loadDomains() {
 
 async function createDomain() {
   try {
+    error.value = ''
     await adminApi.createDomain(newDomain.value)
     showCreateForm.value = false
     newDomain.value = { host: '', port: 443, protocol: 'https', is_global: false, remark: '' }
     await loadDomains()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e) {
+    error.value = (e as Error).message
   }
 }
 
@@ -46,21 +47,23 @@ function cancelEdit() {
 
 async function saveEdit(id: number) {
   try {
+    error.value = ''
     await adminApi.updateDomain(id, editForm.value)
     editingId.value = null
     await loadDomains()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e) {
+    error.value = (e as Error).message
   }
 }
 
 async function deleteDomain(d: DomainAdmin) {
   if (!confirm(`确定删除域名 ${d.host}:${d.port}/${d.protocol} 吗？`)) return
   try {
+    error.value = ''
     await adminApi.deleteDomain(d.id)
     await loadDomains()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e) {
+    error.value = (e as Error).message
   }
 }
 
