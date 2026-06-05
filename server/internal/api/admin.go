@@ -158,7 +158,14 @@ func (h *AdminHandler) ListOverrides(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "db_error", "message": err.Error()}})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"overrides": overrides})
+	out := make([]gin.H, 0, len(overrides))
+	for _, o := range overrides {
+		out = append(out, gin.H{
+			"domain_id": o.DomainID,
+			"action":    o.Action,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"overrides": out})
 }
 
 func (h *AdminHandler) SetOverride(c *gin.Context) {
@@ -173,6 +180,10 @@ func (h *AdminHandler) SetOverride(c *gin.Context) {
 	}
 	if req.Action != "include" && req.Action != "exclude" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "invalid_request", "message": "action must be include or exclude"}})
+		return
+	}
+	if req.DomainID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "invalid_request", "message": "domain_id must be > 0"}})
 		return
 	}
 	// Verify domain exists

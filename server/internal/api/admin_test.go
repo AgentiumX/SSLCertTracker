@@ -223,6 +223,10 @@ func TestListOverrides_IncludeAndExclude(t *testing.T) {
 	if len(resp.Overrides) != 2 {
 		t.Fatalf("expected 2 overrides, got %d", len(resp.Overrides))
 	}
+	// Verify snake_case field names are correctly populated
+	if resp.Overrides[0].DomainID == 0 {
+		t.Errorf("domain_id field not populated (expected non-zero)")
+	}
 }
 
 func TestSetOverride_New(t *testing.T) {
@@ -332,5 +336,29 @@ func TestDeleteOverride_Idempotent(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != 200 {
 		t.Errorf("expected 200 for idempotent delete, got %d", w.Code)
+	}
+}
+
+func TestSetOverride_ZeroDomainID(t *testing.T) {
+	r, s := setupRouter(t)
+	a := &store.Agent{AgentID: "a1", DisplayName: "A1", LastSeenAt: time.Now()}
+	s.CreateAgent(a)
+	body := `{"domain_id": 0, "action": "include"}`
+	req := httptest.NewRequest("POST", "/api/admin/agents/a1/overrides", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 400 {
+		t.Errorf("expected 400 for domain_id=0, got %d", w.Code)
+	}
+}
+
+func TestDeleteOverride_InvalidDomainID(t *testing.T) {
+	r, _ := setupRouter(t)
+	req := httptest.NewRequest("DELETE", "/api/admin/agents/a1/overrides/abc", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 400 {
+		t.Errorf("expected 400 for non-numeric domain_id, got %d", w.Code)
 	}
 }
