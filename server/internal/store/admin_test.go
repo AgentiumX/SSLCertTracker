@@ -58,14 +58,30 @@ func TestUpdateAgentRemark(t *testing.T) {
 	}
 }
 
+func TestUpdateAgentRemark_NotFound(t *testing.T) {
+	s := setupTestDB(t)
+	err := s.UpdateAgentRemark("nonexistent", "x")
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Errorf("expected ErrRecordNotFound, got %v", err)
+	}
+}
+
 func TestListOverrides(t *testing.T) {
 	s := setupTestDB(t)
 	d1 := &Domain{Host: "d1.com", Port: 443, Protocol: "https"}
 	d2 := &Domain{Host: "d2.com", Port: 443, Protocol: "https"}
-	s.CreateDomain(d1)
-	s.CreateDomain(d2)
-	s.CreateOverride(&AgentDomainOverride{AgentID: "a1", DomainID: d1.ID, Action: "include"})
-	s.CreateOverride(&AgentDomainOverride{AgentID: "a1", DomainID: d2.ID, Action: "exclude"})
+	if err := s.CreateDomain(d1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateDomain(d2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateOverride(&AgentDomainOverride{AgentID: "a1", DomainID: d1.ID, Action: "include"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateOverride(&AgentDomainOverride{AgentID: "a1", DomainID: d2.ID, Action: "exclude"}); err != nil {
+		t.Fatal(err)
+	}
 	overrides, err := s.ListOverrides("a1")
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +94,9 @@ func TestListOverrides(t *testing.T) {
 func TestUpsertOverride(t *testing.T) {
 	s := setupTestDB(t)
 	d := &Domain{Host: "d.com", Port: 443, Protocol: "https"}
-	s.CreateDomain(d)
+	if err := s.CreateDomain(d); err != nil {
+		t.Fatal(err)
+	}
 	// Insert
 	if err := s.UpsertOverride("a1", d.ID, "include"); err != nil {
 		t.Fatalf("UpsertOverride insert: %v", err)
@@ -87,7 +105,10 @@ func TestUpsertOverride(t *testing.T) {
 	if err := s.UpsertOverride("a1", d.ID, "exclude"); err != nil {
 		t.Fatalf("UpsertOverride update: %v", err)
 	}
-	overrides, _ := s.ListOverrides("a1")
+	overrides, err := s.ListOverrides("a1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(overrides) != 1 || overrides[0].Action != "exclude" {
 		t.Errorf("expected 1 override with action=exclude, got %+v", overrides)
 	}

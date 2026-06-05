@@ -240,6 +240,10 @@ func (s *Store) ListOverrides(agentID string) ([]AgentDomainOverride, error) {
 }
 
 // UpsertOverride inserts or updates an override.
+// Note: Uses GORM FirstOrCreate which is SELECT → INSERT/UPDATE, not atomic.
+// Concurrent requests for the same (agentID, domainID) may trigger PK conflict errors.
+// The composite primary key prevents data corruption, but callers may see unfriendly DB errors.
+// For admin operations (low frequency), this risk is acceptable.
 func (s *Store) UpsertOverride(agentID string, domainID uint, action string) error {
 	override := &AgentDomainOverride{AgentID: agentID, DomainID: domainID, Action: action}
 	return s.db.Where(AgentDomainOverride{AgentID: agentID, DomainID: domainID}).
