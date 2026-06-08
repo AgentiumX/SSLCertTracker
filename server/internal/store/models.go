@@ -49,10 +49,10 @@ type User struct {
 }
 
 type AlertChannel struct {
-	ID        uint   `gorm:"primaryKey"`
-	Name      string `gorm:"not null"`
-	Type      string `gorm:"not null"`
-	Config    string `gorm:"not null;type:text"`
-	Enabled   bool   `gorm:"not null;default:true"`
-	CreatedAt time.Time
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"not null" json:"name"`
+	Type      string    `gorm:"not null" json:"type"`
+	Config    string    `gorm:"not null;type:text" json:"config"`
+	Enabled   bool      `gorm:"not null;default:true" json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
 }

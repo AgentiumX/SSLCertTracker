@@ -67,6 +67,16 @@ func (c *DingtalkChannel) Send(ctx context.Context, msg Message) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("dingtalk returned status %d", resp.StatusCode)
 	}
+	var result struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("dingtalk: failed to decode response: %w", err)
+	}
+	if result.ErrCode != 0 {
+		return fmt.Errorf("dingtalk error %d: %s", result.ErrCode, result.ErrMsg)
+	}
 	return nil
 }
 

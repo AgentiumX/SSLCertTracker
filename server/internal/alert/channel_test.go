@@ -152,7 +152,9 @@ func TestDingtalk_Send_NoSecret(t *testing.T) {
 	var received map[string]interface{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&received)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
+		fmt.Fprint(w, `{"errcode":0,"errmsg":"ok"}`)
 	}))
 	defer ts.Close()
 
@@ -180,7 +182,9 @@ func TestDingtalk_Send_WithSecret(t *testing.T) {
 		if signVal != expectedSign {
 			t.Errorf("sign mismatch: got %s, want %s", signVal, expectedSign)
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
+		fmt.Fprint(w, `{"errcode":0,"errmsg":"ok"}`)
 	}))
 	defer ts.Close()
 
@@ -199,6 +203,23 @@ func TestDingtalk_Send_NonOK(t *testing.T) {
 	ch := &DingtalkChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
 	if err := ch.Send(context.Background(), Message{Title: "T", Body: "B"}); err == nil {
 		t.Error("expected error for non-2xx status")
+	}
+}
+
+func TestDingtalk_Send_APIError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"errcode":310000,"errmsg":"bad access_token"}`)
+	}))
+	defer ts.Close()
+	ch := &DingtalkChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "T", Body: "B"})
+	if err == nil {
+		t.Fatal("expected error for bad access_token")
+	}
+	if got := err.Error(); got != "dingtalk error 310000: bad access_token" {
+		t.Errorf("unexpected error: %s", got)
 	}
 }
 
