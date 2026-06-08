@@ -2,11 +2,13 @@ package alert
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -165,20 +167,37 @@ func TestDingtalk_Send_NoSecret(t *testing.T) {
 }
 
 func TestDingtalk_Send_WithSecret(t *testing.T) {
-	var receivedURL string
+	secret := "SEC123"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedURL = r.URL.String()
+		q := r.URL.Query()
+		tsVal := q.Get("timestamp")
+		signVal := q.Get("sign")
+		// Independently compute expected signature
+		stringToSign := tsVal + "\n" + secret
+		h := hmac.New(sha256.New, []byte(secret))
+		h.Write([]byte(stringToSign))
+		expectedSign := base64.StdEncoding.EncodeToString(h.Sum(nil))
+		if signVal != expectedSign {
+			t.Errorf("sign mismatch: got %s, want %s", signVal, expectedSign)
+		}
 		w.WriteHeader(200)
 	}))
 	defer ts.Close()
 
-	ch := &DingtalkChannel{config: fmt.Sprintf(`{"url":"%s","secret":"SEC123"}`, ts.URL)}
+	ch := &DingtalkChannel{config: fmt.Sprintf(`{"url":"%s","secret":"%s"}`, ts.URL, secret)}
 	err := ch.Send(context.Background(), Message{Title: "Test", Body: "Body"})
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	// Verify timestamp and sign parameters are present
-	if !strings.Contains(receivedURL, "timestamp=") || !strings.Contains(receivedURL, "sign=") {
-		t.Errorf("expected timestamp and sign in URL, got %s", receivedURL)
+}
+
+func TestDingtalk_Send_NonOK(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer ts.Close()
+	ch := &DingtalkChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	if err := ch.Send(context.Background(), Message{Title: "T", Body: "B"}); err == nil {
+		t.Error("expected error for non-2xx status")
 	}
 }
