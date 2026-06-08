@@ -50,6 +50,14 @@ func SetupRouter(s *store.Store, agentToken string, expireThresholdDays int,
 		adminGroup.GET("/agents/:id/overrides", h.ListOverrides)
 		adminGroup.POST("/agents/:id/overrides", h.SetOverride)
 		adminGroup.DELETE("/agents/:id/overrides/:domain_id", h.DeleteOverride)
+
+		alertH := NewAlertChannelHandler(s)
+		adminGroup.POST("/alert-channels", alertH.CreateChannel)
+		adminGroup.GET("/alert-channels", alertH.ListChannels)
+		adminGroup.GET("/alert-channels/:id", alertH.GetChannel)
+		adminGroup.PUT("/alert-channels/:id", alertH.UpdateChannel)
+		adminGroup.DELETE("/alert-channels/:id", alertH.DeleteChannel)
+		adminGroup.POST("/alert-channels/:id/test", alertH.TestChannel)
 	}
 
 	// Static + SPA fallback for all non-API paths.
