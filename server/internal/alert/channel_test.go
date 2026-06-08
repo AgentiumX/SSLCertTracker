@@ -241,7 +241,9 @@ func TestFeishu_Send(t *testing.T) {
 	var received map[string]interface{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&received)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
+		fmt.Fprint(w, `{"code":0,"msg":"success"}`)
 	}))
 	defer ts.Close()
 
@@ -266,6 +268,23 @@ func TestFeishu_Send_NonOK(t *testing.T) {
 	}
 }
 
+func TestFeishu_Send_APIError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"code":19021,"msg":"sign match fail or timestamp is not within one hour from current time"}`)
+	}))
+	defer ts.Close()
+	ch := &FeishuChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "T", Body: "B"})
+	if err == nil {
+		t.Fatal("expected error for API error code")
+	}
+	if got := err.Error(); got != "feishu error 19021: sign match fail or timestamp is not within one hour from current time" {
+		t.Errorf("unexpected error: %s", got)
+	}
+}
+
 func TestValidateConfig_Wecom_Valid(t *testing.T) {
 	ch := &WecomChannel{config: `{"url":"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"}`}
 	if err := ch.ValidateConfig(); err != nil {
@@ -284,7 +303,9 @@ func TestWecom_Send(t *testing.T) {
 	var received map[string]interface{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&received)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
+		fmt.Fprint(w, `{"errcode":0,"errmsg":"ok"}`)
 	}))
 	defer ts.Close()
 
@@ -306,6 +327,23 @@ func TestWecom_Send_NonOK(t *testing.T) {
 	ch := &WecomChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
 	if err := ch.Send(context.Background(), Message{Title: "T", Body: "B"}); err == nil {
 		t.Error("expected error for non-2xx status")
+	}
+}
+
+func TestWecom_Send_APIError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"errcode":93000,"errmsg":"invalid webhook url"}`)
+	}))
+	defer ts.Close()
+	ch := &WecomChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "T", Body: "B"})
+	if err == nil {
+		t.Fatal("expected error for API error code")
+	}
+	if got := err.Error(); got != "wecom error 93000: invalid webhook url" {
+		t.Errorf("unexpected error: %s", got)
 	}
 }
 

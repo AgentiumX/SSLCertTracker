@@ -44,6 +44,16 @@ func (c *WecomChannel) Send(ctx context.Context, msg Message) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("wecom returned status %d", resp.StatusCode)
 	}
+	var result struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("wecom: failed to decode response: %w", err)
+	}
+	if result.ErrCode != 0 {
+		return fmt.Errorf("wecom error %d: %s", result.ErrCode, result.ErrMsg)
+	}
 	return nil
 }
 

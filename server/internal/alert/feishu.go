@@ -55,6 +55,16 @@ func (c *FeishuChannel) Send(ctx context.Context, msg Message) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("feishu returned status %d", resp.StatusCode)
 	}
+	var result struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("feishu: failed to decode response: %w", err)
+	}
+	if result.Code != 0 {
+		return fmt.Errorf("feishu error %d: %s", result.Code, result.Msg)
+	}
 	return nil
 }
 
