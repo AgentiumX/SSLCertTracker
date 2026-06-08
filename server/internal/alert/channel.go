@@ -1,8 +1,18 @@
 package alert
 
 import (
+	"context"
 	"fmt"
 	"time"
+)
+
+// Compile-time interface compliance assertions.
+var (
+	_ Channel = (*WebhookChannel)(nil)
+	_ Channel = (*DingtalkChannel)(nil)
+	_ Channel = (*FeishuChannel)(nil)
+	_ Channel = (*WecomChannel)(nil)
+	_ Channel = (*EmailChannel)(nil)
 )
 
 // Message is the unified message payload sent through all channels.
@@ -14,7 +24,7 @@ type Message struct {
 // Channel is the interface all alert channel adapters must implement.
 type Channel interface {
 	// Send sends a message through the channel.
-	Send(msg Message) error
+	Send(ctx context.Context, msg Message) error
 	// Test sends a fixed test message to verify the channel configuration.
 	Test() error
 	// ValidateConfig validates the channel's JSON config string.
