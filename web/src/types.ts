@@ -78,3 +78,12 @@ export interface Override {
   domain_id: number
   action: 'include' | 'exclude'
 }
+
+export interface AlertChannel {
+  id: number
+  name: string
+  type: 'webhook' | 'dingtalk' | 'feishu' | 'wecom' | 'email'
+  config?: string
+  enabled: boolean
+  created_at: string
+}
