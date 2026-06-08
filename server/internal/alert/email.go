@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"mime"
 	"net/smtp"
 	"strings"
 )
@@ -34,7 +35,7 @@ func (c *EmailChannel) Send(ctx context.Context, msg Message) error {
 	var email strings.Builder
 	email.WriteString(fmt.Sprintf("From: %s\r\n", cfg.From))
 	email.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(cfg.To, ",")))
-	email.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Title))
+	email.WriteString(fmt.Sprintf("Subject: %s\r\n", mime.QEncoding.Encode("utf-8", msg.Title)))
 	email.WriteString("MIME-Version: 1.0\r\n")
 	email.WriteString("Content-Type: text/plain; charset=\"utf-8\"\r\n")
 	email.WriteString("\r\n")

@@ -308,3 +308,10 @@ func TestValidateConfig_Email_Invalid_EmptyTo(t *testing.T) {
 		t.Error("expected error for empty to list")
 	}
 }
+
+func TestValidateConfig_Email_Invalid_JSON(t *testing.T) {
+	ch := &EmailChannel{config: `not json`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+}
