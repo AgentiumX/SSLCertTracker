@@ -1,6 +1,13 @@
 package alert
 
-import "testing"
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
 
 func TestNewChannel_Webhook(t *testing.T) {
 	ch, err := NewChannel("webhook", `{"url":"https://example.com"}`)
@@ -56,5 +63,50 @@ func TestNewChannel_InvalidType(t *testing.T) {
 	_, err := NewChannel("invalid", `{}`)
 	if err == nil {
 		t.Error("expected error for invalid type")
+	}
+}
+
+func TestValidateConfig_Webhook_Valid(t *testing.T) {
+	ch := &WebhookChannel{config: `{"url":"https://example.com/hook"}`}
+	if err := ch.ValidateConfig(); err != nil {
+		t.Errorf("expected valid config, got error: %v", err)
+	}
+}
+
+func TestValidateConfig_Webhook_Invalid_MissingURL(t *testing.T) {
+	ch := &WebhookChannel{config: `{}`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for missing url")
+	}
+}
+
+func TestValidateConfig_Webhook_Invalid_JSON(t *testing.T) {
+	ch := &WebhookChannel{config: `not json`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+}
+
+func TestWebhook_Send(t *testing.T) {
+	var received map[string]string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("expected Content-Type application/json")
+		}
+		json.NewDecoder(r.Body).Decode(&received)
+		w.WriteHeader(200)
+	}))
+	defer ts.Close()
+
+	ch := &WebhookChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "Test", Body: "Body"})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if received["title"] != "Test" || received["body"] != "Body" {
+		t.Errorf("unexpected payload: %+v", received)
 	}
 }
