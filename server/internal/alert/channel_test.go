@@ -201,3 +201,46 @@ func TestDingtalk_Send_NonOK(t *testing.T) {
 		t.Error("expected error for non-2xx status")
 	}
 }
+
+func TestValidateConfig_Feishu_Valid(t *testing.T) {
+	ch := &FeishuChannel{config: `{"url":"https://open.feishu.cn/open-apis/bot/v2/hook/xxx"}`}
+	if err := ch.ValidateConfig(); err != nil {
+		t.Errorf("expected valid config, got error: %v", err)
+	}
+}
+
+func TestValidateConfig_Feishu_Invalid_MissingURL(t *testing.T) {
+	ch := &FeishuChannel{config: `{}`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for missing url")
+	}
+}
+
+func TestFeishu_Send(t *testing.T) {
+	var received map[string]interface{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&received)
+		w.WriteHeader(200)
+	}))
+	defer ts.Close()
+
+	ch := &FeishuChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "Alert", Body: "Test"})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if received["msg_type"] != "interactive" {
+		t.Errorf("expected msg_type=interactive, got %+v", received)
+	}
+}
+
+func TestFeishu_Send_NonOK(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer ts.Close()
+	ch := &FeishuChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	if err := ch.Send(context.Background(), Message{Title: "T", Body: "B"}); err == nil {
+		t.Error("expected error for non-2xx status")
+	}
+}
