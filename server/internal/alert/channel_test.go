@@ -110,3 +110,16 @@ func TestWebhook_Send(t *testing.T) {
 		t.Errorf("unexpected payload: %+v", received)
 	}
 }
+
+func TestWebhook_Send_NonOK(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer ts.Close()
+
+	ch := &WebhookChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "T", Body: "B"})
+	if err == nil {
+		t.Error("expected error for non-2xx status")
+	}
+}
