@@ -49,6 +49,7 @@ func main() {
 		&store.AgentDomainOverride{},
 		&store.CheckResult{},
 		&store.User{},
+		&store.AlertChannel{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}

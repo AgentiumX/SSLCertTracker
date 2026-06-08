@@ -47,3 +47,12 @@ type User struct {
 	PasswordHash string `gorm:"not null"`
 	CreatedAt    time.Time
 }
+
+type AlertChannel struct {
+	ID        uint   `gorm:"primaryKey"`
+	Name      string `gorm:"not null"`
+	Type      string `gorm:"not null"`
+	Config    string `gorm:"not null;type:text"`
+	Enabled   bool   `gorm:"not null;default:true"`
+	CreatedAt time.Time
+}

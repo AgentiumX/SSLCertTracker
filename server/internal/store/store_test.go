@@ -19,7 +19,7 @@ func setupTestDB(t *testing.T) *Store {
 		sqlDB, _ := db.DB()
 		sqlDB.Close()
 	})
-	if err := db.AutoMigrate(&Agent{}, &Domain{}, &AgentDomainOverride{}, &CheckResult{}, &User{}); err != nil {
+	if err := db.AutoMigrate(&Agent{}, &Domain{}, &AgentDomainOverride{}, &CheckResult{}, &User{}, &AlertChannel{}); err != nil {
 		t.Fatal(err)
 	}
 	return &Store{db: db}

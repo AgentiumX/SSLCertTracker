@@ -249,3 +249,51 @@ func (s *Store) UpsertOverride(agentID string, domainID uint, action string) err
 	return s.db.Where(AgentDomainOverride{AgentID: agentID, DomainID: domainID}).
 		Assign(AgentDomainOverride{Action: action}).FirstOrCreate(override).Error
 }
+
+// AlertChannel operations
+
+func (s *Store) CreateAlertChannel(ch *AlertChannel) error {
+	return s.db.Create(ch).Error
+}
+
+func (s *Store) ListAlertChannels() ([]AlertChannel, error) {
+	var channels []AlertChannel
+	err := s.db.Find(&channels).Error
+	return channels, err
+}
+
+func (s *Store) GetAlertChannel(id uint) (*AlertChannel, error) {
+	var ch AlertChannel
+	err := s.db.First(&ch, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ch, nil
+}
+
+func (s *Store) UpdateAlertChannel(id uint, name, channelType, config string, enabled bool) error {
+	res := s.db.Model(&AlertChannel{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"name":    name,
+		"type":    channelType,
+		"config":  config,
+		"enabled": enabled,
+	})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (s *Store) DeleteAlertChannel(id uint) error {
+	res := s.db.Delete(&AlertChannel{}, id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
