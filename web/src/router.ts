@@ -5,6 +5,7 @@ import Login from './views/Login.vue'
 import AdminDomains from './views/AdminDomains.vue'
 import AdminAgents from './views/AdminAgents.vue'
 import AdminAgentOverrides from './views/AdminAgentOverrides.vue'
+import AdminChannels from './views/AdminChannels.vue'
 import { useAuth } from './composables/useAuth'
 
 const router = createRouter({
@@ -16,6 +17,7 @@ const router = createRouter({
     { path: '/admin/domains', component: AdminDomains, meta: { requiresAuth: true } },
     { path: '/admin/agents', component: AdminAgents, meta: { requiresAuth: true } },
     { path: '/admin/agents/:id', component: AdminAgentOverrides, props: true, meta: { requiresAuth: true } },
+    { path: '/admin/channels', component: AdminChannels, meta: { requiresAuth: true } },
   ],
 })
 
