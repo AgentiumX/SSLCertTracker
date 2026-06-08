@@ -192,3 +192,36 @@ func TestTestChannel_NotFound(t *testing.T) {
 		t.Errorf("expected 404, got %d", w.Code)
 	}
 }
+
+func TestGetChannel_NotFound(t *testing.T) {
+	r, _ := setupAlertChannelRouter(t)
+	req := httptest.NewRequest("GET", "/api/admin/alert-channels/999", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 404 {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestDeleteChannel_NotFound(t *testing.T) {
+	r, _ := setupAlertChannelRouter(t)
+	req := httptest.NewRequest("DELETE", "/api/admin/alert-channels/999", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 404 {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestCreateChannel_MissingRequiredField(t *testing.T) {
+	r, _ := setupAlertChannelRouter(t)
+	// Missing "name" field (required)
+	body := `{"type":"webhook","config":"{\"url\":\"https://test.com\"}","enabled":true}`
+	req := httptest.NewRequest("POST", "/api/admin/alert-channels", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != 400 {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
