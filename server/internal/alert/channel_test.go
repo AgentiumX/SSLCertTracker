@@ -287,3 +287,24 @@ func TestWecom_Send_NonOK(t *testing.T) {
 		t.Error("expected error for non-2xx status")
 	}
 }
+
+func TestValidateConfig_Email_Valid(t *testing.T) {
+	ch := &EmailChannel{config: `{"smtp_host":"smtp.example.com","smtp_port":587,"username":"user","password":"pass","from":"a@b.com","to":["c@d.com"]}`}
+	if err := ch.ValidateConfig(); err != nil {
+		t.Errorf("expected valid config, got error: %v", err)
+	}
+}
+
+func TestValidateConfig_Email_Invalid_MissingHost(t *testing.T) {
+	ch := &EmailChannel{config: `{"smtp_port":587,"username":"user","password":"pass","from":"a@b.com","to":["c@d.com"]}`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for missing smtp_host")
+	}
+}
+
+func TestValidateConfig_Email_Invalid_EmptyTo(t *testing.T) {
+	ch := &EmailChannel{config: `{"smtp_host":"smtp.example.com","smtp_port":587,"username":"user","password":"pass","from":"a@b.com","to":[]}`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for empty to list")
+	}
+}
