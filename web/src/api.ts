@@ -1,4 +1,4 @@
-import type { Overview, DomainsResponse, DomainDetail, User, DomainAdmin, AgentAdmin, Override, AlertChannel } from './types'
+import type { Overview, DomainsResponse, DomainDetail, User, DomainAdmin, AgentAdmin, Override, AlertChannel, AlertChannelInput } from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -71,9 +71,9 @@ export const channelApi = {
     request<{ channels: AlertChannel[] }>('/api/admin/alert-channels'),
   get: (id: number) =>
     request<AlertChannel>(`/api/admin/alert-channels/${id}`),
-  create: (req: { name: string; type: string; config: string; enabled: boolean }) =>
+  create: (req: AlertChannelInput) =>
     request<{ id: number }>('/api/admin/alert-channels', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: number, req: { name: string; type: string; config: string; enabled: boolean }) =>
+  update: (id: number, req: AlertChannelInput) =>
     request<{ ok: boolean }>(`/api/admin/alert-channels/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
   delete: (id: number) =>
     request<{ ok: boolean }>(`/api/admin/alert-channels/${id}`, { method: 'DELETE' }),

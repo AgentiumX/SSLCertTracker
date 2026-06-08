@@ -87,3 +87,10 @@ export interface AlertChannel {
   enabled: boolean
   created_at: string
 }
+
+export interface AlertChannelInput {
+  name: string
+  type: AlertChannel['type']
+  config: string
+  enabled: boolean
+}
