@@ -33,7 +33,7 @@ func (c *WebhookChannel) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("webhook returned status %d", resp.StatusCode)
 	}
 	return nil
