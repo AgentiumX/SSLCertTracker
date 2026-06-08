@@ -40,6 +40,14 @@ async function handleLogout() {
         >
           Agent 管理
         </RouterLink>
+        <RouterLink
+          to="/admin/channels"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition"
+          active-class="text-ink bg-bg-subtle"
+          inactive-class="text-ink-soft hover:text-ink hover:bg-bg-subtle"
+        >
+          告警渠道
+        </RouterLink>
       </nav>
 
       <div class="flex-1" />
