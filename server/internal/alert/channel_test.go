@@ -244,3 +244,46 @@ func TestFeishu_Send_NonOK(t *testing.T) {
 		t.Error("expected error for non-2xx status")
 	}
 }
+
+func TestValidateConfig_Wecom_Valid(t *testing.T) {
+	ch := &WecomChannel{config: `{"url":"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"}`}
+	if err := ch.ValidateConfig(); err != nil {
+		t.Errorf("expected valid config, got error: %v", err)
+	}
+}
+
+func TestValidateConfig_Wecom_Invalid_MissingURL(t *testing.T) {
+	ch := &WecomChannel{config: `{}`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for missing url")
+	}
+}
+
+func TestWecom_Send(t *testing.T) {
+	var received map[string]interface{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&received)
+		w.WriteHeader(200)
+	}))
+	defer ts.Close()
+
+	ch := &WecomChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "Alert", Body: "Test"})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if received["msgtype"] != "markdown" {
+		t.Errorf("expected msgtype=markdown, got %+v", received)
+	}
+}
+
+func TestWecom_Send_NonOK(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer ts.Close()
+	ch := &WecomChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	if err := ch.Send(context.Background(), Message{Title: "T", Body: "B"}); err == nil {
+		t.Error("expected error for non-2xx status")
+	}
+}

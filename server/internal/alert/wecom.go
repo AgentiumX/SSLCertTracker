@@ -1,13 +1,50 @@
 package alert
 
-import "context"
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
 
 type WecomChannel struct {
 	config string
 }
 
+type wecomConfig struct {
+	URL string `json:"url"`
+}
+
 func (c *WecomChannel) Send(ctx context.Context, msg Message) error {
-	return nil // TODO: implement in task 6
+	var cfg wecomConfig
+	if err := json.Unmarshal([]byte(c.config), &cfg); err != nil {
+		return err
+	}
+	payload := map[string]interface{}{
+		"msgtype": "markdown",
+		"markdown": map[string]string{
+			"content": fmt.Sprintf("**%s**\n%s", msg.Title, msg.Body),
+		},
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", cfg.URL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("wecom returned status %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func (c *WecomChannel) Test() error {
@@ -15,5 +52,12 @@ func (c *WecomChannel) Test() error {
 }
 
 func (c *WecomChannel) ValidateConfig() error {
-	return nil // TODO: implement in task 6
+	var cfg wecomConfig
+	if err := json.Unmarshal([]byte(c.config), &cfg); err != nil {
+		return fmt.Errorf("invalid JSON: %w", err)
+	}
+	if cfg.URL == "" {
+		return fmt.Errorf("url is required")
+	}
+	return nil
 }
