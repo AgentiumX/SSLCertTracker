@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -121,5 +122,63 @@ func TestWebhook_Send_NonOK(t *testing.T) {
 	err := ch.Send(context.Background(), Message{Title: "T", Body: "B"})
 	if err == nil {
 		t.Error("expected error for non-2xx status")
+	}
+}
+
+func TestValidateConfig_Dingtalk_Valid(t *testing.T) {
+	ch := &DingtalkChannel{config: `{"url":"https://oapi.dingtalk.com/robot/send?access_token=xxx","secret":"SEC..."}`}
+	if err := ch.ValidateConfig(); err != nil {
+		t.Errorf("expected valid config, got error: %v", err)
+	}
+}
+
+func TestValidateConfig_Dingtalk_Valid_NoSecret(t *testing.T) {
+	ch := &DingtalkChannel{config: `{"url":"https://oapi.dingtalk.com/robot/send?access_token=xxx"}`}
+	if err := ch.ValidateConfig(); err != nil {
+		t.Errorf("expected valid config without secret, got error: %v", err)
+	}
+}
+
+func TestValidateConfig_Dingtalk_Invalid_MissingURL(t *testing.T) {
+	ch := &DingtalkChannel{config: `{"secret":"SEC..."}`}
+	if err := ch.ValidateConfig(); err == nil {
+		t.Error("expected error for missing url")
+	}
+}
+
+func TestDingtalk_Send_NoSecret(t *testing.T) {
+	var received map[string]interface{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&received)
+		w.WriteHeader(200)
+	}))
+	defer ts.Close()
+
+	ch := &DingtalkChannel{config: fmt.Sprintf(`{"url":"%s"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "Alert", Body: "Test body"})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if received["msgtype"] != "markdown" {
+		t.Errorf("expected msgtype=markdown, got %+v", received)
+	}
+}
+
+func TestDingtalk_Send_WithSecret(t *testing.T) {
+	var receivedURL string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedURL = r.URL.String()
+		w.WriteHeader(200)
+	}))
+	defer ts.Close()
+
+	ch := &DingtalkChannel{config: fmt.Sprintf(`{"url":"%s","secret":"SEC123"}`, ts.URL)}
+	err := ch.Send(context.Background(), Message{Title: "Test", Body: "Body"})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	// Verify timestamp and sign parameters are present
+	if !strings.Contains(receivedURL, "timestamp=") || !strings.Contains(receivedURL, "sign=") {
+		t.Errorf("expected timestamp and sign in URL, got %s", receivedURL)
 	}
 }
